@@ -25,7 +25,7 @@ Buka:
 http://127.0.0.1:8000
 ```
 
-Pilih/upload video, pilih mode output dan quality, lalu klik tombol **Optimize Video**. Progress proses akan tampil sampai tombol download hasil muncul.
+Pilih/upload video, lalu tool akan menampilkan preview input dan metadata seperti resolusi, durasi, codec, audio, frame rate, pixel format, warna, dan ukuran file. Setelah itu pilih mode output dan quality, lalu klik tombol **Optimize Video**. Progress proses akan tampil sampai preview output dan tombol download hasil muncul.
 
 Mode output:
 
