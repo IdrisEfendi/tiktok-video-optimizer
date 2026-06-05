@@ -340,453 +340,129 @@ def page():
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>TikTok Video Optimizer</title>
-  <style>
-    :root {
-      color-scheme: light;
-      --bg: #f6f7fb;
-      --panel: #ffffff;
-      --ink: #16181d;
-      --muted: #677084;
-      --line: #dfe3ea;
-      --accent: #0d9488;
-      --accent-strong: #0f766e;
-      --danger: #b42318;
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: var(--bg);
-      color: var(--ink);
-    }
-
-    main {
-      width: min(920px, calc(100% - 32px));
-      margin: 0 auto;
-      padding: 40px 0;
-    }
-
-    header {
-      margin-bottom: 24px;
-    }
-
-    h1 {
-      margin: 0 0 8px;
-      font-size: 32px;
-      line-height: 1.1;
-      letter-spacing: 0;
-    }
-
-    p {
-      margin: 0;
-      color: var(--muted);
-      line-height: 1.55;
-    }
-
-    .tool {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 300px;
-      gap: 18px;
-      align-items: start;
-    }
-
-    .panel {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 18px;
-      box-shadow: 0 12px 34px rgba(22, 24, 29, .06);
-    }
-
-    .dropzone {
-      display: grid;
-      place-items: center;
-      min-height: 280px;
-      border: 1.5px dashed #aab4c3;
-      border-radius: 8px;
-      background: #fbfcfe;
-      text-align: center;
-      padding: 24px;
-      cursor: pointer;
-    }
-
-    .dropzone:hover,
-    .dropzone.dragover {
-      border-color: var(--accent);
-      background: #f0fdfa;
-    }
-
-    .dropzone strong {
-      display: block;
-      margin-bottom: 6px;
-      font-size: 18px;
-    }
-
-    input[type="file"] {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      opacity: 0;
-      pointer-events: none;
-    }
-
-    .filename {
-      min-height: 24px;
-      margin: 14px 0;
-      color: var(--ink);
-      overflow-wrap: anywhere;
-    }
-
-    .preview-grid {
-      display: none;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-      margin: 14px 0;
-    }
-
-    .preview-box {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      overflow: hidden;
-      background: #0f1115;
-    }
-
-    .preview-box video {
-      display: block;
-      width: 100%;
-      aspect-ratio: 9 / 16;
-      background: #0f1115;
-      object-fit: contain;
-    }
-
-    .preview-label {
-      padding: 8px 10px;
-      background: #ffffff;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 700;
-    }
-
-    .metadata {
-      display: none;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-      margin: 14px 0;
-    }
-
-    .metadata-item {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 9px 10px;
-      background: #fbfcfe;
-      min-width: 0;
-    }
-
-    .metadata-item span {
-      display: block;
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .metadata-item strong {
-      display: block;
-      margin-top: 2px;
-      color: var(--ink);
-      font-size: 14px;
-      overflow-wrap: anywhere;
-    }
-
-    .recommendation {
-      display: none;
-      margin: 14px 0;
-      padding: 12px;
-      border: 1px solid #99f6e4;
-      border-radius: 8px;
-      background: #f0fdfa;
-      color: var(--accent-strong);
-      line-height: 1.45;
-    }
-
-    .recommendation strong {
-      display: block;
-      margin-bottom: 3px;
-      color: var(--accent-strong);
-    }
-
-    .mode-group {
-      display: grid;
-      gap: 8px;
-      margin: 14px 0;
-    }
-
-    .mode-title {
-      color: var(--muted);
-      font-size: 14px;
-      font-weight: 700;
-    }
-
-    .mode-options {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 8px;
-    }
-
-    .mode-option input {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      opacity: 0;
-      pointer-events: none;
-    }
-
-    .mode-option span {
-      display: grid;
-      place-items: center;
-      min-height: 42px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #ffffff;
-      color: var(--ink);
-      font-weight: 700;
-      cursor: pointer;
-      text-align: center;
-      padding: 8px;
-    }
-
-    .mode-option input:checked + span {
-      border-color: var(--accent);
-      background: #f0fdfa;
-      color: var(--accent-strong);
-    }
-
-    button, .download {
-      width: 100%;
-      border: 0;
-      border-radius: 8px;
-      background: var(--accent);
-      color: white;
-      font: inherit;
-      font-weight: 700;
-      padding: 13px 16px;
-      cursor: pointer;
-      text-align: center;
-      text-decoration: none;
-    }
-
-    .actions {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-    }
-
-    button:hover, .download:hover {
-      background: var(--accent-strong);
-    }
-
-    button:disabled {
-      cursor: not-allowed;
-      opacity: .55;
-    }
-
-    .delete-button {
-      background: #b42318;
-    }
-
-    .delete-button:hover {
-      background: #912018;
-    }
-
-    .settings {
-      display: grid;
-      gap: 12px;
-    }
-
-    .metric {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 10px 0;
-      border-bottom: 1px solid var(--line);
-      color: var(--muted);
-      font-size: 14px;
-    }
-
-    .metric strong {
-      color: var(--ink);
-      text-align: right;
-    }
-
-    .status {
-      min-height: 44px;
-      margin-top: 14px;
-      padding: 12px;
-      border-radius: 8px;
-      background: #f8fafc;
-      color: var(--muted);
-      line-height: 1.45;
-      overflow-wrap: anywhere;
-    }
-
-    .status.error {
-      background: #fff1f0;
-      color: var(--danger);
-    }
-
-    .progress {
-      display: none;
-      height: 10px;
-      margin-top: 12px;
-      overflow: hidden;
-      border-radius: 999px;
-      background: #e5e7eb;
-    }
-
-    .progress-bar {
-      width: 0%;
-      height: 100%;
-      border-radius: inherit;
-      background: var(--accent);
-      transition: width .2s ease;
-    }
-
-    .result {
-      display: none;
-      margin-top: 12px;
-    }
-
-    @media (max-width: 760px) {
-      main {
-        width: min(100% - 24px, 920px);
-        padding: 24px 0;
-      }
-
-      h1 { font-size: 26px; }
-
-      .tool {
-        grid-template-columns: 1fr;
-      }
-
-      .dropzone {
-        min-height: 220px;
-      }
-
-      .preview-grid,
-      .metadata {
-        grid-template-columns: 1fr;
-      }
-
-      .actions {
-        grid-template-columns: 1fr;
-      }
-    }
-  </style>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ["Inter", "ui-sans-serif", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
+          },
+        },
+      },
+    };
+  </script>
 </head>
-<body>
-  <main>
-    <header>
-      <h1>TikTok Video Optimizer</h1>
-      <p>Upload video, lalu generate file MP4 vertikal 1080x1920 yang lebih aman untuk TikTok.</p>
+<body class="min-h-screen bg-slate-50 font-sans text-slate-950">
+  <main class="mx-auto w-[min(920px,calc(100%_-_32px))] py-10 max-md:w-[calc(100%_-_24px)] max-md:py-6">
+    <header class="mb-6">
+      <h1 class="mb-2 text-[32px] font-extrabold leading-tight tracking-normal max-md:text-[26px]">TikTok Video Optimizer</h1>
+      <p class="max-w-[680px] leading-relaxed text-slate-500">Upload video, lalu generate file MP4 vertikal 1080x1920 yang lebih aman untuk TikTok.</p>
     </header>
 
-    <section class="tool">
-      <form class="panel" id="uploadForm">
-        <label class="dropzone" id="dropzone" for="videoInput">
+    <section class="grid items-start gap-[18px] md:grid-cols-[minmax(0,1fr)_300px]">
+      <form class="rounded-lg border border-slate-200 bg-white p-[18px] shadow-[0_12px_34px_rgba(22,24,29,0.06)]" id="uploadForm">
+        <div class="sticky top-3 z-10 mb-3.5 grid gap-2.5 rounded-lg border border-slate-300 bg-slate-50/95 p-3 shadow-[0_12px_28px_rgba(22,24,29,0.08)] backdrop-blur max-md:static" id="statusPanel" aria-live="polite">
+          <div class="flex items-start gap-2.5">
+            <div class="grid h-7 w-7 flex-none place-items-center rounded-full bg-slate-200 text-sm font-black leading-none text-slate-600" id="statusIcon">i</div>
+            <div class="min-w-0">
+              <div class="mb-0.5 font-extrabold leading-tight text-slate-950" id="statusTitle">Siap</div>
+              <div class="break-words leading-relaxed text-slate-500" id="status">Pilih video untuk mulai membaca metadata.</div>
+            </div>
+          </div>
+          <div class="hidden h-2.5 overflow-hidden rounded-full bg-slate-200" id="progress">
+            <div class="h-full w-0 rounded-full bg-teal-600 transition-[width] duration-200" id="progressBar"></div>
+          </div>
+        </div>
+        <label class="grid min-h-[280px] cursor-pointer place-items-center rounded-lg border-2 border-dashed border-slate-300 bg-gradient-to-b from-white to-slate-50 p-6 text-center transition hover:-translate-y-px hover:border-teal-600 hover:bg-teal-50 max-md:min-h-[220px]" id="dropzone" for="videoInput">
           <span>
-            <strong>Pilih atau tarik video ke sini</strong>
-            <span>MP4, MOV, MKV, atau format lain yang didukung FFmpeg</span>
+            <strong class="mb-1.5 block text-lg">Pilih atau tarik video ke sini</strong>
+            <span class="text-slate-500">MP4, MOV, MKV, atau format lain yang didukung FFmpeg</span>
           </span>
         </label>
-        <input id="videoInput" name="video" type="file" accept="video/*" required>
-        <div class="filename" id="filename">Belum ada file dipilih.</div>
-        <div class="preview-grid" id="previewGrid">
-          <div class="preview-box">
-            <video id="inputPreview" controls muted playsinline></video>
-            <div class="preview-label">Input</div>
+        <input class="sr-only" id="videoInput" name="video" type="file" accept="video/*" required>
+        <div class="my-3.5 min-h-6 break-words text-slate-950" id="filename">Belum ada file dipilih.</div>
+        <div class="my-3.5 grid gap-3 md:grid-cols-2" id="previewGrid" style="display: none;">
+          <div class="overflow-hidden rounded-lg border border-slate-200 bg-slate-950">
+            <video class="block aspect-[9/16] w-full bg-slate-950 object-contain" id="inputPreview" controls muted playsinline></video>
+            <div class="bg-white px-2.5 py-2 text-sm font-bold text-slate-500">Input</div>
           </div>
-          <div class="preview-box" id="outputPreviewBox" style="display: none;">
-            <video id="outputPreview" controls playsinline></video>
-            <div class="preview-label">Output</div>
-          </div>
-        </div>
-        <div class="metadata" id="metadata"></div>
-        <div class="recommendation" id="recommendation"></div>
-        <div class="mode-title" id="outputMetadataTitle" style="display: none;">Output metadata</div>
-        <div class="metadata" id="outputMetadata"></div>
-        <div class="mode-group">
-          <div class="mode-title">Preset</div>
-          <div class="mode-options">
-            <label class="mode-option">
-              <input type="radio" name="preset" value="safe-default" data-mode="fit" data-quality="safe" checked>
-              <span>Safe Default</span>
-            </label>
-            <label class="mode-option">
-              <input type="radio" name="preset" value="small-file" data-mode="fit" data-quality="standard">
-              <span>Small File</span>
-            </label>
-            <label class="mode-option">
-              <input type="radio" name="preset" value="high-detail" data-mode="blur" data-quality="high">
-              <span>High Detail</span>
-            </label>
+          <div class="overflow-hidden rounded-lg border border-slate-200 bg-slate-950" id="outputPreviewBox" style="display: none;">
+            <video class="block aspect-[9/16] w-full bg-slate-950 object-contain" id="outputPreview" controls playsinline></video>
+            <div class="bg-white px-2.5 py-2 text-sm font-bold text-slate-500">Output</div>
           </div>
         </div>
-        <div class="mode-group">
-          <div class="mode-title">Mode output</div>
-          <div class="mode-options">
-            <label class="mode-option">
-              <input type="radio" name="mode" value="fit" checked>
-              <span>Fit</span>
+        <div class="my-3.5 grid gap-2 md:grid-cols-2" id="metadata" style="display: none;"></div>
+        <div class="my-3.5 rounded-lg border border-teal-200 bg-teal-50 p-3 leading-relaxed text-teal-700" id="recommendation" style="display: none;"></div>
+        <div class="text-sm font-bold text-slate-500" id="outputMetadataTitle" style="display: none;">Output metadata</div>
+        <div class="my-3.5 grid gap-2 md:grid-cols-2" id="outputMetadata" style="display: none;"></div>
+        <div class="my-3.5 grid gap-2">
+          <div class="text-sm font-bold text-slate-500">Preset</div>
+          <div class="grid grid-cols-3 gap-2">
+            <label>
+              <input class="peer sr-only" type="radio" name="preset" value="safe-default" data-mode="fit" data-quality="safe" checked>
+              <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">Safe Default</span>
             </label>
-            <label class="mode-option">
-              <input type="radio" name="mode" value="crop">
-              <span>Crop</span>
+            <label>
+              <input class="peer sr-only" type="radio" name="preset" value="small-file" data-mode="fit" data-quality="standard">
+              <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">Small File</span>
             </label>
-            <label class="mode-option">
-              <input type="radio" name="mode" value="blur">
-              <span>Blur</span>
+            <label>
+              <input class="peer sr-only" type="radio" name="preset" value="high-detail" data-mode="blur" data-quality="high">
+              <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">High Detail</span>
             </label>
           </div>
         </div>
-        <div class="mode-group">
-          <div class="mode-title">Quality</div>
-          <div class="mode-options">
-            <label class="mode-option">
-              <input type="radio" name="quality" value="safe" checked>
-              <span>Safe</span>
+        <div class="my-3.5 grid gap-2">
+          <div class="text-sm font-bold text-slate-500">Mode output</div>
+          <div class="grid grid-cols-3 gap-2">
+            <label>
+              <input class="peer sr-only" type="radio" name="mode" value="fit" checked>
+              <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">Fit</span>
             </label>
-            <label class="mode-option">
-              <input type="radio" name="quality" value="high">
-              <span>High</span>
+            <label>
+              <input class="peer sr-only" type="radio" name="mode" value="crop">
+              <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">Crop</span>
             </label>
-            <label class="mode-option">
-              <input type="radio" name="quality" value="standard">
-              <span>Standard</span>
+            <label>
+              <input class="peer sr-only" type="radio" name="mode" value="blur">
+              <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">Blur</span>
             </label>
           </div>
         </div>
-        <button id="optimizeButton" type="submit">Optimize Video</button>
-        <div class="status" id="status">Siap memproses video.</div>
-        <div class="progress" id="progress">
-          <div class="progress-bar" id="progressBar"></div>
+        <div class="my-3.5 grid gap-2">
+          <div class="text-sm font-bold text-slate-500">Quality</div>
+          <div class="grid grid-cols-3 gap-2">
+            <label>
+              <input class="peer sr-only" type="radio" name="quality" value="safe" checked>
+              <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">Safe</span>
+            </label>
+            <label>
+              <input class="peer sr-only" type="radio" name="quality" value="high">
+              <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">High</span>
+            </label>
+            <label>
+              <input class="peer sr-only" type="radio" name="quality" value="standard">
+              <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">Standard</span>
+            </label>
+          </div>
         </div>
-        <div class="result actions" id="result">
-          <a class="download" id="downloadLink" href="#">Download Hasil</a>
-          <button class="delete-button" id="deleteButton" type="button">Hapus Hasil</button>
+        <button class="w-full rounded-lg bg-teal-600 px-4 py-3 font-bold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-55" id="optimizeButton" type="submit">Optimize Video</button>
+        <div class="mt-3 grid gap-2.5 md:grid-cols-2" id="result" style="display: none;">
+          <a class="w-full rounded-lg bg-teal-600 px-4 py-3 text-center font-bold text-white no-underline transition hover:bg-teal-700" id="downloadLink" href="#">Download Hasil</a>
+          <button class="w-full rounded-lg bg-red-700 px-4 py-3 font-bold text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-55" id="deleteButton" type="button">Hapus Hasil</button>
         </div>
       </form>
 
-      <aside class="panel settings" aria-label="Standar output">
-        <div class="metric"><span>Format</span><strong>MP4</strong></div>
-        <div class="metric"><span>Resolusi</span><strong>1080 x 1920</strong></div>
-        <div class="metric"><span>Frame rate</span><strong>30 fps</strong></div>
-        <div class="metric"><span>Video codec</span><strong>H.264</strong></div>
-        <div class="metric"><span>Audio</span><strong>AAC 192 kbps</strong></div>
-        <div class="metric"><span>Loudness</span><strong>-14 LUFS</strong></div>
-        <div class="metric"><span>Default quality</span><strong>Safe</strong></div>
-        <div class="metric"><span>Cleanup</span><strong>otomatis</strong></div>
+      <aside class="sticky top-3 grid gap-3 rounded-lg border border-slate-200 bg-white p-[18px] shadow-[0_12px_34px_rgba(22,24,29,0.06)] max-md:static" aria-label="Standar output">
+        <div class="flex justify-between gap-3 border-b border-slate-200 py-2.5 text-sm text-slate-500"><span>Format</span><strong class="text-right text-slate-950">MP4</strong></div>
+        <div class="flex justify-between gap-3 border-b border-slate-200 py-2.5 text-sm text-slate-500"><span>Resolusi</span><strong class="text-right text-slate-950">1080 x 1920</strong></div>
+        <div class="flex justify-between gap-3 border-b border-slate-200 py-2.5 text-sm text-slate-500"><span>Frame rate</span><strong class="text-right text-slate-950">30 fps</strong></div>
+        <div class="flex justify-between gap-3 border-b border-slate-200 py-2.5 text-sm text-slate-500"><span>Video codec</span><strong class="text-right text-slate-950">H.264</strong></div>
+        <div class="flex justify-between gap-3 border-b border-slate-200 py-2.5 text-sm text-slate-500"><span>Audio</span><strong class="text-right text-slate-950">AAC 192 kbps</strong></div>
+        <div class="flex justify-between gap-3 border-b border-slate-200 py-2.5 text-sm text-slate-500"><span>Loudness</span><strong class="text-right text-slate-950">-14 LUFS</strong></div>
+        <div class="flex justify-between gap-3 border-b border-slate-200 py-2.5 text-sm text-slate-500"><span>Default quality</span><strong class="text-right text-slate-950">Safe</strong></div>
+        <div class="flex justify-between gap-3 border-b border-slate-200 py-2.5 text-sm text-slate-500"><span>Cleanup</span><strong class="text-right text-slate-950">otomatis</strong></div>
       </aside>
     </section>
   </main>
@@ -797,6 +473,9 @@ def page():
     const dropzone = document.querySelector("#dropzone");
     const filename = document.querySelector("#filename");
     const button = document.querySelector("#optimizeButton");
+    const statusPanel = document.querySelector("#statusPanel");
+    const statusTitle = document.querySelector("#statusTitle");
+    const statusIcon = document.querySelector("#statusIcon");
     const statusBox = document.querySelector("#status");
     const result = document.querySelector("#result");
     const downloadLink = document.querySelector("#downloadLink");
@@ -814,6 +493,59 @@ def page():
     let pollTimer = null;
     let previewId = null;
     let outputFilename = null;
+
+    const statusPanelBase = "sticky top-3 z-10 mb-3.5 grid gap-2.5 rounded-lg border p-3 shadow-[0_12px_28px_rgba(22,24,29,0.08)] backdrop-blur max-md:static";
+    const statusIconBase = "grid h-7 w-7 flex-none place-items-center rounded-full text-sm font-black leading-none";
+    const statusTitleBase = "mb-0.5 font-extrabold leading-tight";
+    const statusMessageBase = "break-words leading-relaxed";
+    const statusStyles = {
+      idle: {
+        panel: "border-slate-300 bg-slate-50/95",
+        icon: "bg-slate-200 text-slate-600",
+        title: "text-slate-950",
+        message: "text-slate-500",
+        bar: "bg-teal-600",
+      },
+      loading: {
+        panel: "border-blue-200 bg-blue-50/95",
+        icon: "bg-blue-200 text-blue-700",
+        title: "text-blue-700",
+        message: "text-slate-600",
+        bar: "bg-blue-600",
+      },
+      success: {
+        panel: "border-green-200 bg-green-50/95",
+        icon: "bg-green-200 text-green-700",
+        title: "text-green-700",
+        message: "text-green-700",
+        bar: "bg-green-600",
+      },
+      error: {
+        panel: "border-red-200 bg-red-50/95",
+        icon: "bg-red-200 text-red-700",
+        title: "text-red-700",
+        message: "text-red-700",
+        bar: "bg-red-600",
+      },
+    };
+
+    function setStatus(type, title, message) {
+      const style = statusStyles[type] || statusStyles.idle;
+      const iconMap = {
+        idle: "i",
+        loading: "...",
+        success: "ok",
+        error: "!",
+      };
+      statusPanel.className = `${statusPanelBase} ${style.panel}`;
+      statusIcon.className = `${statusIconBase} ${style.icon}`;
+      statusTitle.className = `${statusTitleBase} ${style.title}`;
+      statusBox.className = `${statusMessageBase} ${style.message}`;
+      progressBar.className = `h-full w-0 rounded-full transition-[width] duration-200 ${style.bar}`;
+      statusIcon.textContent = iconMap[type] || "i";
+      statusTitle.textContent = title;
+      statusBox.textContent = message;
+    }
 
     function setRadioValue(name, value) {
       const field = document.querySelector(`input[name="${name}"][value="${value}"]`);
@@ -879,9 +611,9 @@ def page():
       ];
 
       container.innerHTML = items.map(([label, value]) => `
-        <div class="metadata-item">
-          <span>${label}</span>
-          <strong>${value}</strong>
+        <div class="min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2">
+          <span class="block text-xs font-bold text-slate-500">${label}</span>
+          <strong class="mt-0.5 block break-words text-sm text-slate-950">${value}</strong>
         </div>
       `).join("");
       container.style.display = "grid";
@@ -901,7 +633,7 @@ def page():
       }
 
       setProgress(data.progress);
-      statusBox.textContent = data.message || "Memproses video.";
+      setStatus("loading", "Memproses", data.message || "Memproses video.");
 
       if (data.status === "done") {
         clearInterval(pollTimer);
@@ -916,16 +648,16 @@ def page():
           outputMetadataTitle.style.display = "block";
           renderMetadata(outputMetadata, data.output_metadata);
         }
-        result.style.display = "block";
+        result.style.display = "grid";
         button.disabled = false;
+        setStatus("success", "Selesai", "File hasil sudah siap. Preview output dan tombol download tersedia di bawah.");
         return;
       }
 
       if (data.status === "error") {
         clearInterval(pollTimer);
         pollTimer = null;
-        statusBox.className = "status error";
-        statusBox.textContent = data.error || data.message || "Proses gagal.";
+        setStatus("error", "Proses gagal", data.error || data.message || "Proses gagal.");
         button.disabled = false;
       }
     }
@@ -946,12 +678,12 @@ def page():
       if (data.recommended_preset) {
         applyPresetValue(data.recommended_preset);
         recommendation.innerHTML = `
-          <strong>Rekomendasi: ${presetLabel(data.recommended_preset)}</strong>
+          <strong class="mb-1 block text-teal-700">Rekomendasi: ${presetLabel(data.recommended_preset)}</strong>
           <span>${data.recommendation_reason || ""}</span>
         `;
         recommendation.style.display = "block";
       }
-      statusBox.textContent = "Metadata siap. Preset rekomendasi sudah dipilih.";
+      setStatus("success", "Metadata siap", "Preset rekomendasi sudah dipilih. Cek mode dan quality, lalu jalankan Optimize Video.");
     }
 
     async function setFile(file) {
@@ -971,54 +703,51 @@ def page():
       outputMetadataTitle.style.display = "none";
       progress.style.display = "none";
       progressBar.style.width = "0%";
-      statusBox.className = "status";
-      statusBox.textContent = "Mengupload preview dan membaca metadata.";
+      setStatus("loading", "Membaca video", "Mengupload preview dan membaca metadata.");
 
       try {
         await inspectFile(file);
       } catch (error) {
-        statusBox.className = "status error";
-        statusBox.textContent = error.message;
+        setStatus("error", "Gagal membaca video", error.message);
       }
     }
 
     input.addEventListener("change", () => setFile(input.files[0]));
 
+    const dropzoneActiveClasses = ["-translate-y-px", "border-teal-600", "bg-teal-50"];
+
     ["dragenter", "dragover"].forEach((eventName) => {
       dropzone.addEventListener(eventName, (event) => {
         event.preventDefault();
-        dropzone.classList.add("dragover");
+        dropzone.classList.add(...dropzoneActiveClasses);
       });
     });
 
     ["dragleave", "drop"].forEach((eventName) => {
       dropzone.addEventListener(eventName, (event) => {
         event.preventDefault();
-        dropzone.classList.remove("dragover");
+        dropzone.classList.remove(...dropzoneActiveClasses);
       });
     });
 
     dropzone.addEventListener("drop", (event) => setFile(event.dataTransfer.files[0]));
 
     inputPreview.addEventListener("error", () => {
-      statusBox.className = "status error";
-      statusBox.textContent = "Preview input tidak bisa diputar di browser ini. Biasanya karena codec asli seperti HEVC/H.265, tapi Optimize Video tetap bisa dijalankan.";
+      setStatus("error", "Preview tidak bisa diputar", "Preview input tidak bisa diputar di browser ini. Biasanya karena codec asli seperti HEVC/H.265, tapi Optimize Video tetap bisa dijalankan.");
     });
 
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       const file = input.files[0];
       if (!file) {
-        statusBox.className = "status error";
-        statusBox.textContent = "Pilih video terlebih dahulu.";
+        setStatus("error", "Video belum dipilih", "Pilih video terlebih dahulu.");
         return;
       }
 
       button.disabled = true;
       result.style.display = "none";
       setProgress(5);
-      statusBox.className = "status";
-      statusBox.textContent = "Mengupload video.";
+      setStatus("loading", "Mengupload", "Mengupload video.");
 
       try {
         const body = new FormData();
@@ -1039,13 +768,12 @@ def page():
 
         setProgress(data.progress || 20);
         previewId = null;
-        statusBox.textContent = data.message || "Upload selesai. Menunggu proses optimize.";
+        setStatus("loading", "Menunggu proses", data.message || "Upload selesai. Menunggu proses optimize.");
         pollTimer = setInterval(() => {
           pollJob(data.job_id).catch((error) => {
             clearInterval(pollTimer);
             pollTimer = null;
-            statusBox.className = "status error";
-            statusBox.textContent = error.message;
+            setStatus("error", "Status job gagal", error.message);
             button.disabled = false;
           });
         }, 1000);
@@ -1055,8 +783,7 @@ def page():
           clearInterval(pollTimer);
           pollTimer = null;
         }
-        statusBox.className = "status error";
-        statusBox.textContent = error.message;
+        setStatus("error", "Proses gagal", error.message);
         button.disabled = false;
       }
     });
@@ -1084,11 +811,9 @@ def page():
         outputMetadata.style.display = "none";
         outputMetadataTitle.style.display = "none";
         result.style.display = "none";
-        statusBox.className = "status";
-        statusBox.textContent = "Hasil sudah dihapus.";
+        setStatus("idle", "Hasil dihapus", "Hasil sudah dihapus. Pilih video lagi atau jalankan optimize ulang.");
       } catch (error) {
-        statusBox.className = "status error";
-        statusBox.textContent = error.message;
+        setStatus("error", "Gagal menghapus hasil", error.message);
       } finally {
         deleteButton.disabled = false;
       }
