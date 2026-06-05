@@ -353,15 +353,23 @@ def page():
     };
   </script>
 </head>
-<body class="min-h-screen bg-slate-50 font-sans text-slate-950">
-  <main class="mx-auto w-[min(920px,calc(100%_-_32px))] py-10 max-md:w-[calc(100%_-_24px)] max-md:py-6">
-    <header class="mb-6">
-      <h1 class="mb-2 text-[32px] font-extrabold leading-tight tracking-normal max-md:text-[26px]">TikTok Video Optimizer</h1>
-      <p class="max-w-[680px] leading-relaxed text-slate-500">Upload video, lalu generate file MP4 vertikal 1080x1920 yang lebih aman untuk TikTok.</p>
+<body class="min-h-screen bg-slate-100 font-sans text-slate-950">
+  <main class="mx-auto w-[min(1040px,calc(100%_-_32px))] py-8 max-md:w-[calc(100%_-_24px)] max-md:py-5">
+    <header class="mb-5 flex items-end justify-between gap-4 max-md:block">
+      <div>
+        <p class="mb-1 text-xs font-bold uppercase tracking-[0.14em] text-teal-700">Local video tool</p>
+        <h1 class="mb-2 text-[30px] font-extrabold leading-tight tracking-normal max-md:text-[26px]">TikTok Video Optimizer</h1>
+        <p class="max-w-[660px] leading-relaxed text-slate-600">Convert video ke MP4 vertikal 1080x1920 dengan preset aman untuk upload TikTok.</p>
+      </div>
+      <div class="flex flex-wrap gap-2 text-xs font-bold text-slate-600 max-md:mt-4">
+        <span class="rounded-full border border-slate-200 bg-white px-3 py-1.5">H.264</span>
+        <span class="rounded-full border border-slate-200 bg-white px-3 py-1.5">AAC</span>
+        <span class="rounded-full border border-slate-200 bg-white px-3 py-1.5">1080x1920</span>
+      </div>
     </header>
 
-    <section class="grid items-start gap-[18px] md:grid-cols-[minmax(0,1fr)_300px]">
-      <form class="rounded-lg border border-slate-200 bg-white p-[18px] shadow-[0_12px_34px_rgba(22,24,29,0.06)]" id="uploadForm">
+    <section class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <form class="rounded-lg border border-slate-200 bg-white p-4 shadow-[0_12px_34px_rgba(15,23,42,0.06)]" id="uploadForm">
         <div class="sticky top-3 z-10 mb-3.5 grid gap-2.5 rounded-lg border border-slate-300 bg-slate-50/95 p-3 shadow-[0_12px_28px_rgba(22,24,29,0.08)] backdrop-blur max-md:static" id="statusPanel" aria-live="polite">
           <div class="flex items-start gap-2.5">
             <div class="grid h-7 w-7 flex-none place-items-center rounded-full bg-slate-200 text-sm font-black leading-none text-slate-600" id="statusIcon">i</div>
@@ -374,14 +382,16 @@ def page():
             <div class="h-full w-0 rounded-full bg-teal-600 transition-[width] duration-200" id="progressBar"></div>
           </div>
         </div>
-        <label class="grid min-h-[280px] cursor-pointer place-items-center rounded-lg border-2 border-dashed border-slate-300 bg-gradient-to-b from-white to-slate-50 p-6 text-center transition hover:-translate-y-px hover:border-teal-600 hover:bg-teal-50 max-md:min-h-[220px]" id="dropzone" for="videoInput">
+        <label class="grid min-h-[240px] cursor-pointer place-items-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 p-6 text-center transition hover:border-teal-600 hover:bg-teal-50 max-md:min-h-[200px]" id="dropzone" for="videoInput">
           <span>
-            <strong class="mb-1.5 block text-lg">Pilih atau tarik video ke sini</strong>
-            <span class="text-slate-500">MP4, MOV, MKV, atau format lain yang didukung FFmpeg</span>
+            <span class="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-full bg-white text-2xl font-black text-teal-700 shadow-sm">+</span>
+            <strong class="mb-1.5 block text-xl">Pilih video</strong>
+            <span class="block text-slate-500">atau tarik file ke area ini</span>
+            <span class="mt-3 block text-sm text-slate-400">MP4, MOV, MKV, dan format FFmpeg lainnya</span>
           </span>
         </label>
         <input class="sr-only" id="videoInput" name="video" type="file" accept="video/*" required>
-        <div class="my-3.5 min-h-6 break-words text-slate-950" id="filename">Belum ada file dipilih.</div>
+        <div class="my-3 min-h-6 break-words rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600" id="filename">Belum ada file dipilih.</div>
         <div class="my-3.5 grid gap-3 md:grid-cols-2" id="previewGrid" style="display: none;">
           <div class="overflow-hidden rounded-lg border border-slate-200 bg-slate-950">
             <video class="block aspect-[9/16] w-full bg-slate-950 object-contain" id="inputPreview" controls muted playsinline></video>
@@ -396,57 +406,62 @@ def page():
         <div class="my-3.5 rounded-lg border border-teal-200 bg-teal-50 p-3 leading-relaxed text-teal-700" id="recommendation" style="display: none;"></div>
         <div class="text-sm font-bold text-slate-500" id="outputMetadataTitle" style="display: none;">Output metadata</div>
         <div class="my-3.5 grid gap-2 md:grid-cols-2" id="outputMetadata" style="display: none;"></div>
-        <div class="my-3.5 grid gap-2">
-          <div class="text-sm font-bold text-slate-500">Preset</div>
-          <div class="grid grid-cols-3 gap-2">
-            <label>
-              <input class="peer sr-only" type="radio" name="preset" value="safe-default" data-mode="fit" data-quality="safe" checked>
-              <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">Safe Default</span>
-            </label>
-            <label>
-              <input class="peer sr-only" type="radio" name="preset" value="small-file" data-mode="fit" data-quality="standard">
-              <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">Small File</span>
-            </label>
-            <label>
-              <input class="peer sr-only" type="radio" name="preset" value="high-detail" data-mode="blur" data-quality="high">
-              <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">High Detail</span>
-            </label>
+        <details class="my-3.5 rounded-lg border border-slate-200 bg-white">
+          <summary class="cursor-pointer list-none px-3 py-3 text-sm font-bold text-slate-700">Pengaturan output</summary>
+          <div class="grid gap-3 border-t border-slate-200 p-3">
+            <div class="grid gap-2">
+              <div class="text-sm font-bold text-slate-500">Preset</div>
+              <div class="grid grid-cols-3 gap-2">
+                <label>
+                  <input class="peer sr-only" type="radio" name="preset" value="safe-default" data-mode="fit" data-quality="safe" checked>
+                  <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">Safe Default</span>
+                </label>
+                <label>
+                  <input class="peer sr-only" type="radio" name="preset" value="small-file" data-mode="fit" data-quality="standard">
+                  <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">Small File</span>
+                </label>
+                <label>
+                  <input class="peer sr-only" type="radio" name="preset" value="high-detail" data-mode="blur" data-quality="high">
+                  <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">High Detail</span>
+                </label>
+              </div>
+            </div>
+            <div class="grid gap-2">
+              <div class="text-sm font-bold text-slate-500">Mode output</div>
+              <div class="grid grid-cols-3 gap-2">
+                <label>
+                  <input class="peer sr-only" type="radio" name="mode" value="fit" checked>
+                  <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">Fit</span>
+                </label>
+                <label>
+                  <input class="peer sr-only" type="radio" name="mode" value="crop">
+                  <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">Crop</span>
+                </label>
+                <label>
+                  <input class="peer sr-only" type="radio" name="mode" value="blur">
+                  <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">Blur</span>
+                </label>
+              </div>
+            </div>
+            <div class="grid gap-2">
+              <div class="text-sm font-bold text-slate-500">Quality</div>
+              <div class="grid grid-cols-3 gap-2">
+                <label>
+                  <input class="peer sr-only" type="radio" name="quality" value="safe" checked>
+                  <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">Safe</span>
+                </label>
+                <label>
+                  <input class="peer sr-only" type="radio" name="quality" value="high">
+                  <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">High</span>
+                </label>
+                <label>
+                  <input class="peer sr-only" type="radio" name="quality" value="standard">
+                  <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">Standard</span>
+                </label>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="my-3.5 grid gap-2">
-          <div class="text-sm font-bold text-slate-500">Mode output</div>
-          <div class="grid grid-cols-3 gap-2">
-            <label>
-              <input class="peer sr-only" type="radio" name="mode" value="fit" checked>
-              <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">Fit</span>
-            </label>
-            <label>
-              <input class="peer sr-only" type="radio" name="mode" value="crop">
-              <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">Crop</span>
-            </label>
-            <label>
-              <input class="peer sr-only" type="radio" name="mode" value="blur">
-              <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">Blur</span>
-            </label>
-          </div>
-        </div>
-        <div class="my-3.5 grid gap-2">
-          <div class="text-sm font-bold text-slate-500">Quality</div>
-          <div class="grid grid-cols-3 gap-2">
-            <label>
-              <input class="peer sr-only" type="radio" name="quality" value="safe" checked>
-              <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">Safe</span>
-            </label>
-            <label>
-              <input class="peer sr-only" type="radio" name="quality" value="high">
-              <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">High</span>
-            </label>
-            <label>
-              <input class="peer sr-only" type="radio" name="quality" value="standard">
-              <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">Standard</span>
-            </label>
-          </div>
-        </div>
+        </details>
         <button class="w-full rounded-lg bg-teal-600 px-4 py-3 font-bold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-55" id="optimizeButton" type="submit">Optimize Video</button>
         <div class="mt-3 grid gap-2.5 md:grid-cols-2" id="result" style="display: none;">
           <a class="w-full rounded-lg bg-teal-600 px-4 py-3 text-center font-bold text-white no-underline transition hover:bg-teal-700" id="downloadLink" href="#">Download Hasil</a>
@@ -454,15 +469,18 @@ def page():
         </div>
       </form>
 
-      <aside class="sticky top-3 grid gap-3 rounded-lg border border-slate-200 bg-white p-[18px] shadow-[0_12px_34px_rgba(22,24,29,0.06)] max-md:static" aria-label="Standar output">
+      <aside class="sticky top-3 rounded-lg border border-slate-200 bg-white p-4 shadow-[0_12px_34px_rgba(15,23,42,0.06)] max-md:static" aria-label="Standar output">
+        <div class="mb-3">
+          <h2 class="font-extrabold text-slate-950">Output standar</h2>
+          <p class="mt-1 text-sm leading-relaxed text-slate-500">Default aman untuk TikTok dan mayoritas perangkat.</p>
+        </div>
         <div class="flex justify-between gap-3 border-b border-slate-200 py-2.5 text-sm text-slate-500"><span>Format</span><strong class="text-right text-slate-950">MP4</strong></div>
         <div class="flex justify-between gap-3 border-b border-slate-200 py-2.5 text-sm text-slate-500"><span>Resolusi</span><strong class="text-right text-slate-950">1080 x 1920</strong></div>
         <div class="flex justify-between gap-3 border-b border-slate-200 py-2.5 text-sm text-slate-500"><span>Frame rate</span><strong class="text-right text-slate-950">30 fps</strong></div>
         <div class="flex justify-between gap-3 border-b border-slate-200 py-2.5 text-sm text-slate-500"><span>Video codec</span><strong class="text-right text-slate-950">H.264</strong></div>
         <div class="flex justify-between gap-3 border-b border-slate-200 py-2.5 text-sm text-slate-500"><span>Audio</span><strong class="text-right text-slate-950">AAC 192 kbps</strong></div>
         <div class="flex justify-between gap-3 border-b border-slate-200 py-2.5 text-sm text-slate-500"><span>Loudness</span><strong class="text-right text-slate-950">-14 LUFS</strong></div>
-        <div class="flex justify-between gap-3 border-b border-slate-200 py-2.5 text-sm text-slate-500"><span>Default quality</span><strong class="text-right text-slate-950">Safe</strong></div>
-        <div class="flex justify-between gap-3 border-b border-slate-200 py-2.5 text-sm text-slate-500"><span>Cleanup</span><strong class="text-right text-slate-950">otomatis</strong></div>
+        <div class="flex justify-between gap-3 py-2.5 text-sm text-slate-500"><span>Cleanup</span><strong class="text-right text-slate-950">otomatis</strong></div>
       </aside>
     </section>
   </main>
