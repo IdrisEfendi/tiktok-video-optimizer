@@ -169,6 +169,31 @@ def cleanup_old_files():
                 preview["path"].unlink(missing_ok=True)
 
 
+def clear_output_files():
+    OUTPUT_DIR.mkdir(exist_ok=True)
+    deleted = 0
+    bytes_deleted = 0
+    for path in OUTPUT_DIR.iterdir():
+        if not path.is_file():
+            continue
+        try:
+            bytes_deleted += path.stat().st_size
+            path.unlink()
+            deleted += 1
+        except FileNotFoundError:
+            continue
+
+    with JOBS_LOCK:
+        for job in JOBS.values():
+            if job.get("filename"):
+                job["download_url"] = None
+                job["output_url"] = None
+                job["message"] = "File hasil sudah dibersihkan."
+                job["updated_at"] = time.time()
+
+    return {"deleted": deleted, "bytes_deleted": bytes_deleted}
+
+
 def validate_video(path):
     result = subprocess.run(
         [
@@ -340,9 +365,31 @@ def page():
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>TikTok Video Optimizer</title>
+  <script>
+    tailwind = {
+      config: {
+        darkMode: "class",
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Inter", "ui-sans-serif", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
+            },
+          },
+        },
+      },
+    };
+    try {
+      const savedTheme = localStorage.getItem("theme");
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      if (savedTheme === "dark" || (!savedTheme && prefersDark)) {
+        document.documentElement.classList.add("dark");
+      }
+    } catch (error) {}
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
+      darkMode: "class",
       theme: {
         extend: {
           fontFamily: {
@@ -353,109 +400,110 @@ def page():
     };
   </script>
 </head>
-<body class="min-h-screen bg-slate-100 font-sans text-slate-950">
+<body class="min-h-screen bg-slate-100 font-sans text-slate-950 transition-colors dark:bg-slate-950 dark:text-slate-100">
   <main class="mx-auto w-[min(1040px,calc(100%_-_32px))] py-8 max-md:w-[calc(100%_-_24px)] max-md:py-5">
     <header class="mb-5 flex items-end justify-between gap-4 max-md:block">
       <div>
-        <p class="mb-1 text-xs font-bold uppercase tracking-[0.14em] text-teal-700">Local video tool</p>
+        <p class="mb-1 text-xs font-bold uppercase tracking-[0.14em] text-teal-700 dark:text-teal-300">Local video tool</p>
         <h1 class="mb-2 text-[30px] font-extrabold leading-tight tracking-normal max-md:text-[26px]">TikTok Video Optimizer</h1>
-        <p class="max-w-[660px] leading-relaxed text-slate-600">Convert video ke MP4 vertikal 1080x1920 dengan preset aman untuk upload TikTok.</p>
+        <p class="max-w-[660px] leading-relaxed text-slate-600 dark:text-slate-400">Convert video ke MP4 vertikal 1080x1920 dengan preset aman untuk upload TikTok.</p>
       </div>
-      <div class="flex flex-wrap gap-2 text-xs font-bold text-slate-600 max-md:mt-4">
-        <span class="rounded-full border border-slate-200 bg-white px-3 py-1.5">H.264</span>
-        <span class="rounded-full border border-slate-200 bg-white px-3 py-1.5">AAC</span>
-        <span class="rounded-full border border-slate-200 bg-white px-3 py-1.5">1080x1920</span>
+      <div class="flex flex-wrap justify-end gap-2 text-xs font-bold text-slate-600 max-md:mt-4 max-md:justify-start dark:text-slate-300">
+        <span class="rounded-full border border-slate-200 bg-white px-3 py-1.5 dark:border-slate-700 dark:bg-slate-900">H.264</span>
+        <span class="rounded-full border border-slate-200 bg-white px-3 py-1.5 dark:border-slate-700 dark:bg-slate-900">AAC</span>
+        <span class="rounded-full border border-slate-200 bg-white px-3 py-1.5 dark:border-slate-700 dark:bg-slate-900">1080x1920</span>
+        <button class="rounded-full border border-slate-200 bg-white px-3 py-1.5 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800" id="themeToggle" type="button">Dark</button>
       </div>
     </header>
 
     <section class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <form class="rounded-lg border border-slate-200 bg-white p-4 shadow-[0_12px_34px_rgba(15,23,42,0.06)]" id="uploadForm">
-        <div class="sticky top-3 z-10 mb-3.5 grid gap-2.5 rounded-lg border border-slate-300 bg-slate-50/95 p-3 shadow-[0_12px_28px_rgba(22,24,29,0.08)] backdrop-blur max-md:static" id="statusPanel" aria-live="polite">
+      <form class="rounded-lg border border-slate-200 bg-white p-4 shadow-[0_12px_34px_rgba(15,23,42,0.06)] dark:border-slate-800 dark:bg-slate-900 dark:shadow-none" id="uploadForm">
+        <div class="sticky top-3 z-10 mb-3.5 grid gap-2.5 rounded-lg border border-slate-300 bg-slate-50/95 p-3 shadow-[0_12px_28px_rgba(22,24,29,0.08)] backdrop-blur max-md:static dark:border-slate-700 dark:bg-slate-900/95 dark:shadow-none" id="statusPanel" aria-live="polite">
           <div class="flex items-start gap-2.5">
-            <div class="grid h-7 w-7 flex-none place-items-center rounded-full bg-slate-200 text-sm font-black leading-none text-slate-600" id="statusIcon">i</div>
+            <div class="grid h-7 w-7 flex-none place-items-center rounded-full bg-slate-200 text-sm font-black leading-none text-slate-600 dark:bg-slate-800 dark:text-slate-300" id="statusIcon">i</div>
             <div class="min-w-0">
-              <div class="mb-0.5 font-extrabold leading-tight text-slate-950" id="statusTitle">Siap</div>
-              <div class="break-words leading-relaxed text-slate-500" id="status">Pilih video untuk mulai membaca metadata.</div>
+              <div class="mb-0.5 font-extrabold leading-tight text-slate-950 dark:text-slate-100" id="statusTitle">Siap</div>
+              <div class="break-words leading-relaxed text-slate-500 dark:text-slate-400" id="status">Pilih video untuk mulai membaca metadata.</div>
             </div>
           </div>
-          <div class="hidden h-2.5 overflow-hidden rounded-full bg-slate-200" id="progress">
+          <div class="hidden h-2.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800" id="progress">
             <div class="h-full w-0 rounded-full bg-teal-600 transition-[width] duration-200" id="progressBar"></div>
           </div>
         </div>
-        <label class="grid min-h-[240px] cursor-pointer place-items-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 p-6 text-center transition hover:border-teal-600 hover:bg-teal-50 max-md:min-h-[200px]" id="dropzone" for="videoInput">
+        <label class="grid min-h-[240px] cursor-pointer place-items-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 p-6 text-center transition hover:border-teal-600 hover:bg-teal-50 max-md:min-h-[200px] dark:border-slate-700 dark:bg-slate-950 dark:hover:border-teal-400 dark:hover:bg-slate-900" id="dropzone" for="videoInput">
           <span>
-            <span class="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-full bg-white text-2xl font-black text-teal-700 shadow-sm">+</span>
+            <span class="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-full bg-white text-2xl font-black text-teal-700 shadow-sm dark:bg-slate-800 dark:text-teal-300">+</span>
             <strong class="mb-1.5 block text-xl">Pilih video</strong>
-            <span class="block text-slate-500">atau tarik file ke area ini</span>
-            <span class="mt-3 block text-sm text-slate-400">MP4, MOV, MKV, dan format FFmpeg lainnya</span>
+            <span class="block text-slate-500 dark:text-slate-400">atau tarik file ke area ini</span>
+            <span class="mt-3 block text-sm text-slate-400 dark:text-slate-500">MP4, MOV, MKV, dan format FFmpeg lainnya</span>
           </span>
         </label>
         <input class="sr-only" id="videoInput" name="video" type="file" accept="video/*" required>
-        <div class="my-3 min-h-6 break-words rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600" id="filename">Belum ada file dipilih.</div>
+        <div class="my-3 min-h-6 break-words rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:bg-slate-950 dark:text-slate-400" id="filename">Belum ada file dipilih.</div>
         <div class="my-3.5 grid gap-3 md:grid-cols-2" id="previewGrid" style="display: none;">
-          <div class="overflow-hidden rounded-lg border border-slate-200 bg-slate-950">
+          <div class="overflow-hidden rounded-lg border border-slate-200 bg-slate-950 dark:border-slate-800">
             <video class="block aspect-[9/16] w-full bg-slate-950 object-contain" id="inputPreview" controls muted playsinline></video>
-            <div class="bg-white px-2.5 py-2 text-sm font-bold text-slate-500">Input</div>
+            <div class="bg-white px-2.5 py-2 text-sm font-bold text-slate-500 dark:bg-slate-900 dark:text-slate-400">Input</div>
           </div>
-          <div class="overflow-hidden rounded-lg border border-slate-200 bg-slate-950" id="outputPreviewBox" style="display: none;">
+          <div class="overflow-hidden rounded-lg border border-slate-200 bg-slate-950 dark:border-slate-800" id="outputPreviewBox" style="display: none;">
             <video class="block aspect-[9/16] w-full bg-slate-950 object-contain" id="outputPreview" controls playsinline></video>
-            <div class="bg-white px-2.5 py-2 text-sm font-bold text-slate-500">Output</div>
+            <div class="bg-white px-2.5 py-2 text-sm font-bold text-slate-500 dark:bg-slate-900 dark:text-slate-400">Output</div>
           </div>
         </div>
         <div class="my-3.5" id="metadata" style="display: none;"></div>
-        <div class="my-3.5 rounded-lg border border-teal-200 bg-teal-50 p-3 leading-relaxed text-teal-700" id="recommendation" style="display: none;"></div>
+        <div class="my-3.5 rounded-lg border border-teal-200 bg-teal-50 p-3 leading-relaxed text-teal-700 dark:border-teal-900/70 dark:bg-teal-950/40 dark:text-teal-300" id="recommendation" style="display: none;"></div>
         <div class="my-3.5" id="outputMetadata" style="display: none;"></div>
-        <details class="my-3.5 rounded-lg border border-slate-200 bg-white">
-          <summary class="cursor-pointer list-none px-3 py-3 text-sm font-bold text-slate-700">Pengaturan output</summary>
-          <div class="grid gap-3 border-t border-slate-200 p-3">
+        <details class="my-3.5 rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+          <summary class="cursor-pointer list-none px-3 py-3 text-sm font-bold text-slate-700 dark:text-slate-300">Pengaturan output</summary>
+          <div class="grid gap-3 border-t border-slate-200 p-3 dark:border-slate-800">
             <div class="grid gap-2">
-              <div class="text-sm font-bold text-slate-500">Preset</div>
+              <div class="text-sm font-bold text-slate-500 dark:text-slate-400">Preset</div>
               <div class="grid grid-cols-3 gap-2">
                 <label>
                   <input class="peer sr-only" type="radio" name="preset" value="safe-default" data-mode="fit" data-quality="safe" checked>
-                  <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">Safe Default</span>
+                  <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:peer-checked:border-teal-400 dark:peer-checked:bg-teal-950/50 dark:peer-checked:text-teal-300">Safe Default</span>
                 </label>
                 <label>
                   <input class="peer sr-only" type="radio" name="preset" value="small-file" data-mode="fit" data-quality="standard">
-                  <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">Small File</span>
+                  <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:peer-checked:border-teal-400 dark:peer-checked:bg-teal-950/50 dark:peer-checked:text-teal-300">Small File</span>
                 </label>
                 <label>
                   <input class="peer sr-only" type="radio" name="preset" value="high-detail" data-mode="blur" data-quality="high">
-                  <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">High Detail</span>
+                  <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:peer-checked:border-teal-400 dark:peer-checked:bg-teal-950/50 dark:peer-checked:text-teal-300">High Detail</span>
                 </label>
               </div>
             </div>
             <div class="grid gap-2">
-              <div class="text-sm font-bold text-slate-500">Mode output</div>
+              <div class="text-sm font-bold text-slate-500 dark:text-slate-400">Mode output</div>
               <div class="grid grid-cols-3 gap-2">
                 <label>
                   <input class="peer sr-only" type="radio" name="mode" value="fit" checked>
-                  <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">Fit</span>
+                  <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:peer-checked:border-teal-400 dark:peer-checked:bg-teal-950/50 dark:peer-checked:text-teal-300">Fit</span>
                 </label>
                 <label>
                   <input class="peer sr-only" type="radio" name="mode" value="crop">
-                  <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">Crop</span>
+                  <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:peer-checked:border-teal-400 dark:peer-checked:bg-teal-950/50 dark:peer-checked:text-teal-300">Crop</span>
                 </label>
                 <label>
                   <input class="peer sr-only" type="radio" name="mode" value="blur">
-                  <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">Blur</span>
+                  <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:peer-checked:border-teal-400 dark:peer-checked:bg-teal-950/50 dark:peer-checked:text-teal-300">Blur</span>
                 </label>
               </div>
             </div>
             <div class="grid gap-2">
-              <div class="text-sm font-bold text-slate-500">Quality</div>
+              <div class="text-sm font-bold text-slate-500 dark:text-slate-400">Quality</div>
               <div class="grid grid-cols-3 gap-2">
                 <label>
                   <input class="peer sr-only" type="radio" name="quality" value="safe" checked>
-                  <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">Safe</span>
+                  <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:peer-checked:border-teal-400 dark:peer-checked:bg-teal-950/50 dark:peer-checked:text-teal-300">Safe</span>
                 </label>
                 <label>
                   <input class="peer sr-only" type="radio" name="quality" value="high">
-                  <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">High</span>
+                  <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:peer-checked:border-teal-400 dark:peer-checked:bg-teal-950/50 dark:peer-checked:text-teal-300">High</span>
                 </label>
                 <label>
                   <input class="peer sr-only" type="radio" name="quality" value="standard">
-                  <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488]">Standard</span>
+                  <span class="grid min-h-[42px] cursor-pointer place-items-center rounded-lg border border-slate-200 bg-white p-2 text-center font-bold text-slate-950 transition peer-checked:border-teal-600 peer-checked:bg-teal-50 peer-checked:text-teal-700 peer-checked:shadow-[inset_0_0_0_1px_#0d9488] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:peer-checked:border-teal-400 dark:peer-checked:bg-teal-950/50 dark:peer-checked:text-teal-300">Standard</span>
                 </label>
               </div>
             </div>
@@ -468,18 +516,19 @@ def page():
         </div>
       </form>
 
-      <aside class="sticky top-3 rounded-lg border border-slate-200 bg-white p-4 shadow-[0_12px_34px_rgba(15,23,42,0.06)] max-md:static" aria-label="Standar output">
+      <aside class="sticky top-3 rounded-lg border border-slate-200 bg-white p-4 shadow-[0_12px_34px_rgba(15,23,42,0.06)] max-md:static dark:border-slate-800 dark:bg-slate-900 dark:shadow-none" aria-label="Standar output">
         <div class="mb-3">
-          <h2 class="font-extrabold text-slate-950">Output standar</h2>
-          <p class="mt-1 text-sm leading-relaxed text-slate-500">Default aman untuk TikTok dan mayoritas perangkat.</p>
+          <h2 class="font-extrabold text-slate-950 dark:text-slate-100">Output standar</h2>
+          <p class="mt-1 text-sm leading-relaxed text-slate-500 dark:text-slate-400">Default aman untuk TikTok dan mayoritas perangkat.</p>
         </div>
-        <div class="flex justify-between gap-3 border-b border-slate-200 py-2.5 text-sm text-slate-500"><span>Format</span><strong class="text-right text-slate-950">MP4</strong></div>
-        <div class="flex justify-between gap-3 border-b border-slate-200 py-2.5 text-sm text-slate-500"><span>Resolusi</span><strong class="text-right text-slate-950">1080 x 1920</strong></div>
-        <div class="flex justify-between gap-3 border-b border-slate-200 py-2.5 text-sm text-slate-500"><span>Frame rate</span><strong class="text-right text-slate-950">30 fps</strong></div>
-        <div class="flex justify-between gap-3 border-b border-slate-200 py-2.5 text-sm text-slate-500"><span>Video codec</span><strong class="text-right text-slate-950">H.264</strong></div>
-        <div class="flex justify-between gap-3 border-b border-slate-200 py-2.5 text-sm text-slate-500"><span>Audio</span><strong class="text-right text-slate-950">AAC 192 kbps</strong></div>
-        <div class="flex justify-between gap-3 border-b border-slate-200 py-2.5 text-sm text-slate-500"><span>Loudness</span><strong class="text-right text-slate-950">-14 LUFS</strong></div>
-        <div class="flex justify-between gap-3 py-2.5 text-sm text-slate-500"><span>Cleanup</span><strong class="text-right text-slate-950">otomatis</strong></div>
+        <div class="flex justify-between gap-3 border-b border-slate-200 py-2.5 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400"><span>Format</span><strong class="text-right text-slate-950 dark:text-slate-100">MP4</strong></div>
+        <div class="flex justify-between gap-3 border-b border-slate-200 py-2.5 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400"><span>Resolusi</span><strong class="text-right text-slate-950 dark:text-slate-100">1080 x 1920</strong></div>
+        <div class="flex justify-between gap-3 border-b border-slate-200 py-2.5 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400"><span>Frame rate</span><strong class="text-right text-slate-950 dark:text-slate-100">30 fps</strong></div>
+        <div class="flex justify-between gap-3 border-b border-slate-200 py-2.5 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400"><span>Video codec</span><strong class="text-right text-slate-950 dark:text-slate-100">H.264</strong></div>
+        <div class="flex justify-between gap-3 border-b border-slate-200 py-2.5 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400"><span>Audio</span><strong class="text-right text-slate-950 dark:text-slate-100">AAC 192 kbps</strong></div>
+        <div class="flex justify-between gap-3 border-b border-slate-200 py-2.5 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400"><span>Loudness</span><strong class="text-right text-slate-950 dark:text-slate-100">-14 LUFS</strong></div>
+        <div class="flex justify-between gap-3 py-2.5 text-sm text-slate-500 dark:text-slate-400"><span>Cleanup</span><strong class="text-right text-slate-950 dark:text-slate-100">otomatis</strong></div>
+        <button class="mt-3 w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm font-bold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-55 dark:border-red-900/70 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-950/70" id="clearOutputsButton" type="button">Bersihkan hasil lama</button>
       </aside>
     </section>
   </main>
@@ -497,6 +546,8 @@ def page():
     const result = document.querySelector("#result");
     const downloadLink = document.querySelector("#downloadLink");
     const deleteButton = document.querySelector("#deleteButton");
+    const clearOutputsButton = document.querySelector("#clearOutputsButton");
+    const themeToggle = document.querySelector("#themeToggle");
     const progress = document.querySelector("#progress");
     const progressBar = document.querySelector("#progressBar");
     const previewGrid = document.querySelector("#previewGrid");
@@ -510,37 +561,52 @@ def page():
     let previewId = null;
     let outputFilename = null;
 
+    function syncThemeButton() {
+      const isDark = document.documentElement.classList.contains("dark");
+      themeToggle.textContent = isDark ? "Light" : "Dark";
+      themeToggle.setAttribute("aria-label", isDark ? "Gunakan light mode" : "Gunakan dark mode");
+    }
+
+    themeToggle.addEventListener("click", () => {
+      const isDark = document.documentElement.classList.toggle("dark");
+      try {
+        localStorage.setItem("theme", isDark ? "dark" : "light");
+      } catch (error) {}
+      syncThemeButton();
+    });
+    syncThemeButton();
+
     const statusPanelBase = "sticky top-3 z-10 mb-3.5 grid gap-2.5 rounded-lg border p-3 shadow-[0_12px_28px_rgba(22,24,29,0.08)] backdrop-blur max-md:static";
     const statusIconBase = "grid h-7 w-7 flex-none place-items-center rounded-full text-sm font-black leading-none";
     const statusTitleBase = "mb-0.5 font-extrabold leading-tight";
     const statusMessageBase = "break-words leading-relaxed";
     const statusStyles = {
       idle: {
-        panel: "border-slate-300 bg-slate-50/95",
-        icon: "bg-slate-200 text-slate-600",
-        title: "text-slate-950",
-        message: "text-slate-500",
+        panel: "border-slate-300 bg-slate-50/95 dark:border-slate-700 dark:bg-slate-900/95",
+        icon: "bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
+        title: "text-slate-950 dark:text-slate-100",
+        message: "text-slate-500 dark:text-slate-400",
         bar: "bg-teal-600",
       },
       loading: {
-        panel: "border-blue-200 bg-blue-50/95",
-        icon: "bg-blue-200 text-blue-700",
-        title: "text-blue-700",
-        message: "text-slate-600",
+        panel: "border-blue-200 bg-blue-50/95 dark:border-blue-900/70 dark:bg-blue-950/40",
+        icon: "bg-blue-200 text-blue-700 dark:bg-blue-900 dark:text-blue-200",
+        title: "text-blue-700 dark:text-blue-200",
+        message: "text-slate-600 dark:text-blue-100",
         bar: "bg-blue-600",
       },
       success: {
-        panel: "border-green-200 bg-green-50/95",
-        icon: "bg-green-200 text-green-700",
-        title: "text-green-700",
-        message: "text-green-700",
+        panel: "border-green-200 bg-green-50/95 dark:border-green-900/70 dark:bg-green-950/40",
+        icon: "bg-green-200 text-green-700 dark:bg-green-900 dark:text-green-200",
+        title: "text-green-700 dark:text-green-200",
+        message: "text-green-700 dark:text-green-100",
         bar: "bg-green-600",
       },
       error: {
-        panel: "border-red-200 bg-red-50/95",
-        icon: "bg-red-200 text-red-700",
-        title: "text-red-700",
-        message: "text-red-700",
+        panel: "border-red-200 bg-red-50/95 dark:border-red-900/70 dark:bg-red-950/40",
+        icon: "bg-red-200 text-red-700 dark:bg-red-900 dark:text-red-200",
+        title: "text-red-700 dark:text-red-200",
+        message: "text-red-700 dark:text-red-100",
         bar: "bg-red-600",
       },
     };
@@ -632,20 +698,20 @@ def page():
       ];
 
       container.innerHTML = `
-        <details class="rounded-lg border border-slate-200 bg-white">
+        <details class="rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
           <summary class="cursor-pointer list-none px-3 py-3">
             <div class="flex flex-wrap items-center justify-between gap-2">
-              <span class="text-sm font-bold text-slate-700">${title}</span>
-              <span class="flex flex-wrap gap-1.5 text-xs font-bold text-slate-500">
-                ${summary.map((value) => `<span class="rounded-full bg-slate-100 px-2 py-1">${value}</span>`).join("")}
+              <span class="text-sm font-bold text-slate-700 dark:text-slate-300">${title}</span>
+              <span class="flex flex-wrap gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400">
+                ${summary.map((value) => `<span class="rounded-full bg-slate-100 px-2 py-1 dark:bg-slate-900">${value}</span>`).join("")}
               </span>
             </div>
           </summary>
-          <div class="grid gap-2 border-t border-slate-200 p-3 md:grid-cols-2">
+          <div class="grid gap-2 border-t border-slate-200 p-3 md:grid-cols-2 dark:border-slate-800">
             ${items.map(([label, value]) => `
-              <div class="min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2">
-                <span class="block text-xs font-bold text-slate-500">${label}</span>
-                <strong class="mt-0.5 block break-words text-sm text-slate-950">${value}</strong>
+              <div class="min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 dark:border-slate-800 dark:bg-slate-900">
+                <span class="block text-xs font-bold text-slate-500 dark:text-slate-400">${label}</span>
+                <strong class="mt-0.5 block break-words text-sm text-slate-950 dark:text-slate-100">${value}</strong>
               </div>
             `).join("")}
           </div>
@@ -712,7 +778,7 @@ def page():
       if (data.recommended_preset) {
         applyPresetValue(data.recommended_preset);
         recommendation.innerHTML = `
-          <strong class="mb-1 block text-teal-700">Rekomendasi: ${presetLabel(data.recommended_preset)}</strong>
+          <strong class="mb-1 block text-teal-700 dark:text-teal-300">Rekomendasi: ${presetLabel(data.recommended_preset)}</strong>
           <span>${data.recommendation_reason || ""}</span>
         `;
         recommendation.style.display = "block";
@@ -747,7 +813,7 @@ def page():
 
     input.addEventListener("change", () => setFile(input.files[0]));
 
-    const dropzoneActiveClasses = ["-translate-y-px", "border-teal-600", "bg-teal-50"];
+    const dropzoneActiveClasses = ["-translate-y-px", "border-teal-600", "bg-teal-50", "dark:border-teal-400", "dark:bg-slate-900"];
 
     ["dragenter", "dragover"].forEach((eventName) => {
       dropzone.addEventListener(eventName, (event) => {
@@ -848,6 +914,29 @@ def page():
         setStatus("error", "Gagal menghapus hasil", error.message);
       } finally {
         deleteButton.disabled = false;
+      }
+    });
+
+    clearOutputsButton.addEventListener("click", async () => {
+      clearOutputsButton.disabled = true;
+      try {
+        const response = await fetch("/outputs", { method: "DELETE" });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Gagal membersihkan hasil lama.");
+        }
+
+        outputFilename = null;
+        downloadLink.removeAttribute("href");
+        outputPreview.removeAttribute("src");
+        outputPreviewBox.style.display = "none";
+        outputMetadata.style.display = "none";
+        result.style.display = "none";
+        setStatus("idle", "Hasil dibersihkan", `${data.deleted || 0} file hasil dihapus.`);
+      } catch (error) {
+        setStatus("error", "Cleanup gagal", error.message);
+      } finally {
+        clearOutputsButton.disabled = false;
       }
     });
   </script>
@@ -1007,6 +1096,10 @@ class OptimizerHandler(BaseHTTPRequestHandler):
         self.send_error(HTTPStatus.NOT_FOUND)
 
     def do_DELETE(self):
+        if self.path == "/outputs":
+            self.handle_clear_outputs()
+            return
+
         if self.path.startswith("/output/"):
             self.handle_delete_output()
             return
@@ -1225,6 +1318,10 @@ class OptimizerHandler(BaseHTTPRequestHandler):
                     job["updated_at"] = time.time()
 
         self.send_json({"ok": True, "filename": filename})
+
+    def handle_clear_outputs(self):
+        result = clear_output_files()
+        self.send_json({"ok": True, **result})
 
     def handle_download(self, send_body=True):
         filename = Path(unquote(self.path.removeprefix("/download/"))).name
