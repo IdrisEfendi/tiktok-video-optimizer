@@ -918,6 +918,9 @@ def page():
     });
 
     clearOutputsButton.addEventListener("click", async () => {
+      const confirmed = window.confirm("Hapus semua file hasil lama di folder outputs?");
+      if (!confirmed) return;
+
       clearOutputsButton.disabled = true;
       try {
         const response = await fetch("/outputs", { method: "DELETE" });
