@@ -99,6 +99,47 @@ def safe_int(value):
         return 0
 
 
+def recommend_preset(metadata):
+    codec = (metadata.get("video_codec") or "").lower()
+    color_space = (metadata.get("color_space") or "").lower()
+    color_transfer = (metadata.get("color_transfer") or "").lower()
+    color_primaries = (metadata.get("color_primaries") or "").lower()
+    width = metadata.get("width") or 0
+    height = metadata.get("height") or 0
+    duration = metadata.get("duration") or 0
+    size = metadata.get("size") or 0
+
+    color_values = {color_space, color_transfer, color_primaries}
+    is_hdr = bool({"bt2020nc", "bt2020", "smpte2084", "arib-std-b67"} & color_values)
+    is_hevc = codec in {"hevc", "h265"}
+    is_long = duration >= 180
+    is_large = size >= 500 * 1024 * 1024
+    is_high_res = max(width, height) >= 2160 or (width * height) >= 2560 * 1440
+
+    if is_hdr or is_hevc:
+        return {
+            "preset": "safe-default",
+            "reason": "Input terdeteksi HEVC/HDR/warna wide-gamut. Safe Default membantu menormalkan output ke H.264 SDR Rec.709 untuk iPhone/Android.",
+        }
+
+    if is_long or is_large:
+        return {
+            "preset": "small-file",
+            "reason": "Video cukup panjang atau besar. Small File membuat upload lebih ringan sambil tetap memakai format TikTok-safe.",
+        }
+
+    if is_high_res:
+        return {
+            "preset": "high-detail",
+            "reason": "Resolusi input tinggi. High Detail menjaga detail lebih baik dengan quality lebih tinggi dan background blur.",
+        }
+
+    return {
+        "preset": "safe-default",
+        "reason": "Safe Default adalah pilihan seimbang untuk hasil yang konsisten lintas perangkat.",
+    }
+
+
 def cleanup_old_files():
     now = time.time()
     for directory in (UPLOAD_DIR, OUTPUT_DIR):
@@ -459,6 +500,23 @@ def page():
       overflow-wrap: anywhere;
     }
 
+    .recommendation {
+      display: none;
+      margin: 14px 0;
+      padding: 12px;
+      border: 1px solid #99f6e4;
+      border-radius: 8px;
+      background: #f0fdfa;
+      color: var(--accent-strong);
+      line-height: 1.45;
+    }
+
+    .recommendation strong {
+      display: block;
+      margin-bottom: 3px;
+      color: var(--accent-strong);
+    }
+
     .mode-group {
       display: grid;
       gap: 8px;
@@ -655,6 +713,7 @@ def page():
           </div>
         </div>
         <div class="metadata" id="metadata"></div>
+        <div class="recommendation" id="recommendation"></div>
         <div class="mode-title" id="outputMetadataTitle" style="display: none;">Output metadata</div>
         <div class="metadata" id="outputMetadata"></div>
         <div class="mode-group">
@@ -749,6 +808,7 @@ def page():
     const outputPreview = document.querySelector("#outputPreview");
     const outputPreviewBox = document.querySelector("#outputPreviewBox");
     const metadata = document.querySelector("#metadata");
+    const recommendation = document.querySelector("#recommendation");
     const outputMetadata = document.querySelector("#outputMetadata");
     const outputMetadataTitle = document.querySelector("#outputMetadataTitle");
     let pollTimer = null;
@@ -764,6 +824,18 @@ def page():
       if (!field) return;
       setRadioValue("mode", field.dataset.mode || "fit");
       setRadioValue("quality", field.dataset.quality || "safe");
+    }
+
+    function applyPresetValue(value) {
+      const field = document.querySelector(`input[name="preset"][value="${value}"]`);
+      if (!field) return;
+      field.checked = true;
+      applyPreset(field);
+    }
+
+    function presetLabel(value) {
+      const field = document.querySelector(`input[name="preset"][value="${value}"]`);
+      return field ? field.nextElementSibling.textContent : value;
     }
 
     function formatDuration(seconds) {
@@ -871,7 +943,15 @@ def page():
       inputPreview.src = data.preview_url;
       previewGrid.style.display = "grid";
       renderMetadata(metadata, data.metadata);
-      statusBox.textContent = "Metadata siap. Pilih mode dan quality, lalu Optimize Video.";
+      if (data.recommended_preset) {
+        applyPresetValue(data.recommended_preset);
+        recommendation.innerHTML = `
+          <strong>Rekomendasi: ${presetLabel(data.recommended_preset)}</strong>
+          <span>${data.recommendation_reason || ""}</span>
+        `;
+        recommendation.style.display = "block";
+      }
+      statusBox.textContent = "Metadata siap. Preset rekomendasi sudah dipilih.";
     }
 
     async function setFile(file) {
@@ -886,6 +966,7 @@ def page():
       outputPreview.removeAttribute("src");
       outputPreviewBox.style.display = "none";
       metadata.style.display = "none";
+      recommendation.style.display = "none";
       outputMetadata.style.display = "none";
       outputMetadataTitle.style.display = "none";
       progress.style.display = "none";
@@ -1222,12 +1303,14 @@ class OptimizerHandler(BaseHTTPRequestHandler):
                 shutil.copyfileobj(field.file, target)
 
             metadata = validate_video(input_path)
+            recommendation = recommend_preset(metadata)
             now = time.time()
             with PREVIEWS_LOCK:
                 PREVIEWS[preview_id] = {
                     "path": input_path,
                     "filename": field.filename,
                     "metadata": metadata,
+                    "recommendation": recommendation,
                     "created_at": now,
                     "updated_at": now,
                 }
@@ -1236,6 +1319,8 @@ class OptimizerHandler(BaseHTTPRequestHandler):
                 "preview_id": preview_id,
                 "preview_url": f"/preview/{preview_id}",
                 "metadata": metadata,
+                "recommended_preset": recommendation["preset"],
+                "recommendation_reason": recommendation["reason"],
             })
         except ValueError as exc:
             input_path.unlink(missing_ok=True)
