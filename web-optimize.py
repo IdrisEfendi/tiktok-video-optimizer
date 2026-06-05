@@ -28,6 +28,11 @@ CLEANUP_AFTER_HOURS = int(os.getenv("CLEANUP_AFTER_HOURS", "24"))
 CLEANUP_AFTER_SECONDS = CLEANUP_AFTER_HOURS * 60 * 60
 MODES = {"fit", "crop", "blur"}
 QUALITIES = {"standard", "high", "safe"}
+PRESETS = {
+    "safe-default": {"mode": "fit", "quality": "safe", "label": "TikTok Safe Default"},
+    "small-file": {"mode": "fit", "quality": "standard", "label": "TikTok Small File"},
+    "high-detail": {"mode": "blur", "quality": "high", "label": "TikTok High Detail"},
+}
 JOBS = {}
 JOBS_LOCK = threading.Lock()
 JOB_CLEANUP_AFTER_SECONDS = 6 * 60 * 60
@@ -61,6 +66,9 @@ def public_job(job_id):
             "filename": job.get("filename"),
             "mode": job.get("mode"),
             "quality": job.get("quality"),
+            "preset": job.get("preset"),
+            "input_metadata": job.get("input_metadata"),
+            "output_metadata": job.get("output_metadata"),
             "error": job.get("error"),
         }
 
@@ -192,8 +200,9 @@ def run_optimize_job(job_id, input_path, output_path, output_name, mode, quality
             progress=25,
             message="Memvalidasi metadata video.",
         )
-        metadata = validate_video(input_path)
-        duration = metadata.get("duration") or 0
+        input_metadata = validate_video(input_path)
+        duration = input_metadata.get("duration") or 0
+        update_job(job_id, input_metadata=input_metadata)
 
         update_job(
             job_id,
@@ -249,6 +258,7 @@ def run_optimize_job(job_id, input_path, output_path, output_name, mode, quality
             output_path.unlink(missing_ok=True)
             return
 
+        output_metadata = validate_video(output_path)
         update_job(
             job_id,
             status="done",
@@ -258,6 +268,7 @@ def run_optimize_job(job_id, input_path, output_path, output_name, mode, quality
             download_url=f"/download/{output_name}",
             output_url=f"/output/{output_name}",
             filename=output_name,
+            output_metadata=output_metadata,
         )
     except ValueError as exc:
         update_job(
@@ -517,6 +528,15 @@ def page():
       opacity: .55;
     }
 
+    .delete-button {
+      margin-top: 10px;
+      background: #b42318;
+    }
+
+    .delete-button:hover {
+      background: #912018;
+    }
+
     .settings {
       display: grid;
       gap: 12px;
@@ -626,6 +646,25 @@ def page():
           </div>
         </div>
         <div class="metadata" id="metadata"></div>
+        <div class="mode-title" id="outputMetadataTitle" style="display: none;">Output metadata</div>
+        <div class="metadata" id="outputMetadata"></div>
+        <div class="mode-group">
+          <div class="mode-title">Preset</div>
+          <div class="mode-options">
+            <label class="mode-option">
+              <input type="radio" name="preset" value="safe-default" data-mode="fit" data-quality="safe" checked>
+              <span>Safe Default</span>
+            </label>
+            <label class="mode-option">
+              <input type="radio" name="preset" value="small-file" data-mode="fit" data-quality="standard">
+              <span>Small File</span>
+            </label>
+            <label class="mode-option">
+              <input type="radio" name="preset" value="high-detail" data-mode="blur" data-quality="high">
+              <span>High Detail</span>
+            </label>
+          </div>
+        </div>
         <div class="mode-group">
           <div class="mode-title">Mode output</div>
           <div class="mode-options">
@@ -667,6 +706,7 @@ def page():
         </div>
         <div class="result" id="result">
           <a class="download" id="downloadLink" href="#">Download Hasil</a>
+          <button class="delete-button" id="deleteButton" type="button">Hapus Hasil</button>
         </div>
       </form>
 
@@ -692,6 +732,7 @@ def page():
     const statusBox = document.querySelector("#status");
     const result = document.querySelector("#result");
     const downloadLink = document.querySelector("#downloadLink");
+    const deleteButton = document.querySelector("#deleteButton");
     const progress = document.querySelector("#progress");
     const progressBar = document.querySelector("#progressBar");
     const previewGrid = document.querySelector("#previewGrid");
@@ -699,8 +740,22 @@ def page():
     const outputPreview = document.querySelector("#outputPreview");
     const outputPreviewBox = document.querySelector("#outputPreviewBox");
     const metadata = document.querySelector("#metadata");
+    const outputMetadata = document.querySelector("#outputMetadata");
+    const outputMetadataTitle = document.querySelector("#outputMetadataTitle");
     let pollTimer = null;
     let previewId = null;
+    let outputFilename = null;
+
+    function setRadioValue(name, value) {
+      const field = document.querySelector(`input[name="${name}"][value="${value}"]`);
+      if (field) field.checked = true;
+    }
+
+    function applyPreset(field) {
+      if (!field) return;
+      setRadioValue("mode", field.dataset.mode || "fit");
+      setRadioValue("quality", field.dataset.quality || "safe");
+    }
 
     function formatDuration(seconds) {
       if (!seconds) return "-";
@@ -729,7 +784,7 @@ def page():
       return `${(top / bottom).toFixed(2)} fps`;
     }
 
-    function renderMetadata(info) {
+    function renderMetadata(container, info) {
       const items = [
         ["Resolusi", `${info.width || "-"} x ${info.height || "-"}`],
         ["Durasi", formatDuration(info.duration)],
@@ -739,15 +794,16 @@ def page():
         ["Pixel", info.pix_fmt || "-"],
         ["Warna", [info.color_space, info.color_transfer, info.color_primaries].filter(Boolean).join(" / ") || "-"],
         ["Ukuran", formatBytes(info.size)],
+        ["Bitrate", info.bit_rate ? `${(info.bit_rate / 1000000).toFixed(2)} Mbps` : "-"],
       ];
 
-      metadata.innerHTML = items.map(([label, value]) => `
+      container.innerHTML = items.map(([label, value]) => `
         <div class="metadata-item">
           <span>${label}</span>
           <strong>${value}</strong>
         </div>
       `).join("");
-      metadata.style.display = "grid";
+      container.style.display = "grid";
     }
 
     function setProgress(value) {
@@ -771,7 +827,12 @@ def page():
         pollTimer = null;
         downloadLink.href = data.download_url;
         outputPreview.src = data.output_url || data.download_url;
+        outputFilename = data.filename;
         outputPreviewBox.style.display = "block";
+        if (data.output_metadata) {
+          outputMetadataTitle.style.display = "block";
+          renderMetadata(outputMetadata, data.output_metadata);
+        }
         result.style.display = "block";
         button.disabled = false;
         return;
@@ -798,7 +859,7 @@ def page():
       previewId = data.preview_id;
       inputPreview.src = data.preview_url;
       previewGrid.style.display = "grid";
-      renderMetadata(data.metadata);
+      renderMetadata(metadata, data.metadata);
       statusBox.textContent = "Metadata siap. Pilih mode dan quality, lalu Optimize Video.";
     }
 
@@ -808,11 +869,14 @@ def page():
       dt.items.add(file);
       input.files = dt.files;
       previewId = null;
+      outputFilename = null;
       filename.textContent = file.name;
       result.style.display = "none";
       outputPreview.removeAttribute("src");
       outputPreviewBox.style.display = "none";
       metadata.style.display = "none";
+      outputMetadata.style.display = "none";
+      outputMetadataTitle.style.display = "none";
       progress.style.display = "none";
       progressBar.style.width = "0%";
       statusBox.className = "status";
@@ -867,6 +931,7 @@ def page():
           body.append("video", file);
         }
         const formData = new FormData(form);
+        body.append("preset", formData.get("preset") || "safe-default");
         body.append("mode", formData.get("mode") || "fit");
         body.append("quality", formData.get("quality") || "safe");
         const response = await fetch("/optimize", { method: "POST", body });
@@ -896,6 +961,39 @@ def page():
         statusBox.className = "status error";
         statusBox.textContent = error.message;
         button.disabled = false;
+      }
+    });
+
+    document.querySelectorAll('input[name="preset"]').forEach((field) => {
+      field.addEventListener("change", () => applyPreset(field));
+    });
+    applyPreset(document.querySelector('input[name="preset"]:checked'));
+
+    deleteButton.addEventListener("click", async () => {
+      if (!outputFilename) return;
+
+      deleteButton.disabled = true;
+      try {
+        const response = await fetch(`/output/${encodeURIComponent(outputFilename)}`, { method: "DELETE" });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Gagal menghapus hasil.");
+        }
+
+        outputFilename = null;
+        downloadLink.removeAttribute("href");
+        outputPreview.removeAttribute("src");
+        outputPreviewBox.style.display = "none";
+        outputMetadata.style.display = "none";
+        outputMetadataTitle.style.display = "none";
+        result.style.display = "none";
+        statusBox.className = "status";
+        statusBox.textContent = "Hasil sudah dihapus.";
+      } catch (error) {
+        statusBox.className = "status error";
+        statusBox.textContent = error.message;
+      } finally {
+        deleteButton.disabled = false;
       }
     });
   </script>
@@ -992,6 +1090,13 @@ class OptimizerHandler(BaseHTTPRequestHandler):
 
         self.send_error(HTTPStatus.NOT_FOUND)
 
+    def do_DELETE(self):
+        if self.path.startswith("/output/"):
+            self.handle_delete_output()
+            return
+
+        self.send_error(HTTPStatus.NOT_FOUND)
+
     def parse_multipart(self):
         content_length = int(self.headers.get("Content-Length", "0") or "0")
         if content_length <= 0:
@@ -1068,14 +1173,20 @@ class OptimizerHandler(BaseHTTPRequestHandler):
         if form is None:
             return
 
+        preset_field = form["preset"] if "preset" in form else None
+        preset = preset_field.value if preset_field is not None else "safe-default"
+        if preset not in PRESETS:
+            self.send_json({"error": "Preset tidak valid."}, HTTPStatus.BAD_REQUEST)
+            return
+
         mode_field = form["mode"] if "mode" in form else None
-        mode = mode_field.value if mode_field is not None else "fit"
+        mode = mode_field.value if mode_field is not None else PRESETS[preset]["mode"]
         if mode not in MODES:
             self.send_json({"error": "Mode output tidak valid."}, HTTPStatus.BAD_REQUEST)
             return
 
         quality_field = form["quality"] if "quality" in form else None
-        quality = quality_field.value if quality_field is not None else "safe"
+        quality = quality_field.value if quality_field is not None else PRESETS[preset]["quality"]
         if quality not in QUALITIES:
             self.send_json({"error": "Quality tidak valid."}, HTTPStatus.BAD_REQUEST)
             return
@@ -1124,6 +1235,7 @@ class OptimizerHandler(BaseHTTPRequestHandler):
                     "updated_at": now,
                     "mode": mode,
                     "quality": quality,
+                    "preset": preset,
                     "filename": output_name,
                 }
 
@@ -1185,6 +1297,24 @@ class OptimizerHandler(BaseHTTPRequestHandler):
         self.end_headers()
         with file_path.open("rb") as source:
             shutil.copyfileobj(source, self.wfile)
+
+    def handle_delete_output(self):
+        filename = Path(unquote(self.path.removeprefix("/output/"))).name
+        file_path = OUTPUT_DIR / filename
+        if not file_path.is_file():
+            self.send_json({"error": "File hasil tidak ditemukan."}, HTTPStatus.NOT_FOUND)
+            return
+
+        file_path.unlink()
+        with JOBS_LOCK:
+            for job in JOBS.values():
+                if job.get("filename") == filename:
+                    job["download_url"] = None
+                    job["output_url"] = None
+                    job["message"] = "File hasil sudah dihapus."
+                    job["updated_at"] = time.time()
+
+        self.send_json({"ok": True, "filename": filename})
 
     def handle_download(self, send_body=True):
         filename = Path(unquote(self.path.removeprefix("/download/"))).name

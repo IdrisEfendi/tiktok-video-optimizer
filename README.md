@@ -25,7 +25,13 @@ Buka:
 http://127.0.0.1:8000
 ```
 
-Pilih/upload video, lalu tool akan menampilkan preview input dan metadata seperti resolusi, durasi, codec, audio, frame rate, pixel format, warna, dan ukuran file. Setelah itu pilih mode output dan quality, lalu klik tombol **Optimize Video**. Progress proses akan tampil sampai preview output dan tombol download hasil muncul.
+Pilih/upload video, lalu tool akan menampilkan preview input dan metadata seperti resolusi, durasi, codec, audio, frame rate, pixel format, warna, bitrate, dan ukuran file. Setelah itu pilih preset atau atur mode output dan quality, lalu klik tombol **Optimize Video**. Progress proses akan tampil sampai preview output, metadata output, dan tombol download hasil muncul. File hasil bisa dihapus dari UI dengan tombol **Hapus Hasil**.
+
+Preset:
+
+- `Safe Default`: mode `Fit` + quality `Safe`, pilihan utama untuk upload lintas iPhone/Android.
+- `Small File`: mode `Fit` + quality `Standard`, untuk file lebih kecil.
+- `High Detail`: mode `Blur` + quality `High`, untuk video yang butuh detail lebih tinggi.
 
 Mode output:
 
