@@ -1021,8 +1021,20 @@ def page():
 class OptimizerHandler(BaseHTTPRequestHandler):
     server_version = "TikTokOptimizer/1.0"
 
+    def handle_one_request(self):
+        try:
+            super().handle_one_request()
+        except (BrokenPipeError, ConnectionResetError):
+            return
+
     def log_message(self, fmt, *args):
         sys.stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
+
+    def write_response(self, data):
+        try:
+            self.wfile.write(data)
+        except (BrokenPipeError, ConnectionResetError):
+            return
 
     def send_html(self, body, status=HTTPStatus.OK):
         encoded = body.encode("utf-8")
@@ -1030,7 +1042,7 @@ class OptimizerHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(encoded)))
         self.end_headers()
-        self.wfile.write(encoded)
+        self.write_response(encoded)
 
     def send_html_headers(self, body, status=HTTPStatus.OK):
         encoded = body.encode("utf-8")
@@ -1045,7 +1057,7 @@ class OptimizerHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(encoded)))
         self.end_headers()
-        self.wfile.write(encoded)
+        self.write_response(encoded)
 
     def serve_video_file(self, file_path, send_body=True, attachment_name=None):
         file_size = file_path.stat().st_size
@@ -1092,7 +1104,7 @@ class OptimizerHandler(BaseHTTPRequestHandler):
                     chunk = source.read(min(1024 * 1024, remaining))
                     if not chunk:
                         break
-                    self.wfile.write(chunk)
+                    self.write_response(chunk)
                     remaining -= len(chunk)
         except (BrokenPipeError, ConnectionResetError):
             return
