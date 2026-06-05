@@ -402,10 +402,9 @@ def page():
             <div class="bg-white px-2.5 py-2 text-sm font-bold text-slate-500">Output</div>
           </div>
         </div>
-        <div class="my-3.5 grid gap-2 md:grid-cols-2" id="metadata" style="display: none;"></div>
+        <div class="my-3.5" id="metadata" style="display: none;"></div>
         <div class="my-3.5 rounded-lg border border-teal-200 bg-teal-50 p-3 leading-relaxed text-teal-700" id="recommendation" style="display: none;"></div>
-        <div class="text-sm font-bold text-slate-500" id="outputMetadataTitle" style="display: none;">Output metadata</div>
-        <div class="my-3.5 grid gap-2 md:grid-cols-2" id="outputMetadata" style="display: none;"></div>
+        <div class="my-3.5" id="outputMetadata" style="display: none;"></div>
         <details class="my-3.5 rounded-lg border border-slate-200 bg-white">
           <summary class="cursor-pointer list-none px-3 py-3 text-sm font-bold text-slate-700">Pengaturan output</summary>
           <div class="grid gap-3 border-t border-slate-200 p-3">
@@ -507,7 +506,6 @@ def page():
     const metadata = document.querySelector("#metadata");
     const recommendation = document.querySelector("#recommendation");
     const outputMetadata = document.querySelector("#outputMetadata");
-    const outputMetadataTitle = document.querySelector("#outputMetadataTitle");
     let pollTimer = null;
     let previewId = null;
     let outputFilename = null;
@@ -615,7 +613,7 @@ def page():
       return `${(top / bottom).toFixed(2)} fps`;
     }
 
-    function renderMetadata(container, info) {
+    function renderMetadata(container, info, title = "Metadata") {
       const items = [
         ["Resolusi", `${info.width || "-"} x ${info.height || "-"}`],
         ["Durasi", formatDuration(info.duration)],
@@ -627,14 +625,33 @@ def page():
         ["Ukuran", formatBytes(info.size)],
         ["Bitrate", info.bit_rate ? `${(info.bit_rate / 1000000).toFixed(2)} Mbps` : "-"],
       ];
+      const summary = [
+        `${info.width || "-"} x ${info.height || "-"}`,
+        formatDuration(info.duration),
+        formatBytes(info.size),
+      ];
 
-      container.innerHTML = items.map(([label, value]) => `
-        <div class="min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2">
-          <span class="block text-xs font-bold text-slate-500">${label}</span>
-          <strong class="mt-0.5 block break-words text-sm text-slate-950">${value}</strong>
-        </div>
-      `).join("");
-      container.style.display = "grid";
+      container.innerHTML = `
+        <details class="rounded-lg border border-slate-200 bg-white">
+          <summary class="cursor-pointer list-none px-3 py-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <span class="text-sm font-bold text-slate-700">${title}</span>
+              <span class="flex flex-wrap gap-1.5 text-xs font-bold text-slate-500">
+                ${summary.map((value) => `<span class="rounded-full bg-slate-100 px-2 py-1">${value}</span>`).join("")}
+              </span>
+            </div>
+          </summary>
+          <div class="grid gap-2 border-t border-slate-200 p-3 md:grid-cols-2">
+            ${items.map(([label, value]) => `
+              <div class="min-w-0 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2">
+                <span class="block text-xs font-bold text-slate-500">${label}</span>
+                <strong class="mt-0.5 block break-words text-sm text-slate-950">${value}</strong>
+              </div>
+            `).join("")}
+          </div>
+        </details>
+      `;
+      container.style.display = "block";
     }
 
     function setProgress(value) {
@@ -663,8 +680,7 @@ def page():
         outputFilename = data.filename;
         outputPreviewBox.style.display = "block";
         if (data.output_metadata) {
-          outputMetadataTitle.style.display = "block";
-          renderMetadata(outputMetadata, data.output_metadata);
+          renderMetadata(outputMetadata, data.output_metadata, "Output metadata");
         }
         result.style.display = "grid";
         button.disabled = false;
@@ -692,7 +708,7 @@ def page():
       previewId = data.preview_id;
       inputPreview.src = data.preview_url;
       previewGrid.style.display = "grid";
-      renderMetadata(metadata, data.metadata);
+      renderMetadata(metadata, data.metadata, "Input metadata");
       if (data.recommended_preset) {
         applyPresetValue(data.recommended_preset);
         recommendation.innerHTML = `
@@ -718,7 +734,6 @@ def page():
       metadata.style.display = "none";
       recommendation.style.display = "none";
       outputMetadata.style.display = "none";
-      outputMetadataTitle.style.display = "none";
       progress.style.display = "none";
       progressBar.style.width = "0%";
       setStatus("loading", "Membaca video", "Mengupload preview dan membaca metadata.");
@@ -827,7 +842,6 @@ def page():
         outputPreview.removeAttribute("src");
         outputPreviewBox.style.display = "none";
         outputMetadata.style.display = "none";
-        outputMetadataTitle.style.display = "none";
         result.style.display = "none";
         setStatus("idle", "Hasil dihapus", "Hasil sudah dihapus. Pilih video lagi atau jalankan optimize ulang.");
       } catch (error) {

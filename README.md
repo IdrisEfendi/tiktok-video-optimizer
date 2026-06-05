@@ -27,6 +27,8 @@ http://127.0.0.1:8000
 
 Pilih/upload video, lalu tool akan menampilkan preview input, metadata, dan rekomendasi preset otomatis berdasarkan codec, warna, durasi, ukuran, dan resolusi input. Setelah itu pilih preset atau atur mode output dan quality, lalu klik tombol **Optimize Video**. Progress proses akan tampil sampai preview output, metadata output, dan tombol download hasil muncul. File hasil bisa dihapus dari UI dengan tombol **Hapus Hasil**.
 
+UI web memakai Tailwind CSS via CDN. Server tetap berjalan tanpa internet, tetapi tampilan akan polos jika browser tidak bisa memuat `https://cdn.tailwindcss.com`.
+
 Preset:
 
 - `Safe Default`: mode `Fit` + quality `Safe`, pilihan utama untuk upload lintas iPhone/Android.
