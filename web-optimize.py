@@ -519,6 +519,12 @@ def page():
       text-decoration: none;
     }
 
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
     button:hover, .download:hover {
       background: var(--accent-strong);
     }
@@ -529,7 +535,6 @@ def page():
     }
 
     .delete-button {
-      margin-top: 10px;
       background: #b42318;
     }
 
@@ -613,6 +618,10 @@ def page():
 
       .preview-grid,
       .metadata {
+        grid-template-columns: 1fr;
+      }
+
+      .actions {
         grid-template-columns: 1fr;
       }
     }
@@ -704,7 +713,7 @@ def page():
         <div class="progress" id="progress">
           <div class="progress-bar" id="progressBar"></div>
         </div>
-        <div class="result" id="result">
+        <div class="result actions" id="result">
           <a class="download" id="downloadLink" href="#">Download Hasil</a>
           <button class="delete-button" id="deleteButton" type="button">Hapus Hasil</button>
         </div>
@@ -825,6 +834,8 @@ def page():
       if (data.status === "done") {
         clearInterval(pollTimer);
         pollTimer = null;
+        progress.style.display = "none";
+        progressBar.style.width = "0%";
         downloadLink.href = data.download_url;
         outputPreview.src = data.output_url || data.download_url;
         outputFilename = data.filename;
@@ -907,6 +918,11 @@ def page():
     });
 
     dropzone.addEventListener("drop", (event) => setFile(event.dataTransfer.files[0]));
+
+    inputPreview.addEventListener("error", () => {
+      statusBox.className = "status error";
+      statusBox.textContent = "Preview input tidak bisa diputar di browser ini. Biasanya karena codec asli seperti HEVC/H.265, tapi Optimize Video tetap bisa dijalankan.";
+    });
 
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -1030,6 +1046,56 @@ class OptimizerHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(encoded)))
         self.end_headers()
         self.wfile.write(encoded)
+
+    def serve_video_file(self, file_path, send_body=True, attachment_name=None):
+        file_size = file_path.stat().st_size
+        range_header = self.headers.get("Range")
+        start = 0
+        end = file_size - 1
+        status = HTTPStatus.OK
+
+        if range_header:
+            match = re.match(r"bytes=(\d*)-(\d*)", range_header)
+            if match:
+                raw_start, raw_end = match.groups()
+                if raw_start:
+                    start = int(raw_start)
+                if raw_end:
+                    end = int(raw_end)
+                if start > end or start >= file_size:
+                    self.send_response(HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
+                    self.send_header("Content-Range", f"bytes */{file_size}")
+                    self.end_headers()
+                    return
+                end = min(end, file_size - 1)
+                status = HTTPStatus.PARTIAL_CONTENT
+
+        content_length = end - start + 1
+        self.send_response(status)
+        self.send_header("Content-Type", "video/mp4")
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Content-Length", str(content_length))
+        if status == HTTPStatus.PARTIAL_CONTENT:
+            self.send_header("Content-Range", f"bytes {start}-{end}/{file_size}")
+        if attachment_name:
+            self.send_header("Content-Disposition", f'attachment; filename="{html.escape(attachment_name)}"')
+        self.end_headers()
+
+        if not send_body:
+            return
+
+        try:
+            with file_path.open("rb") as source:
+                source.seek(start)
+                remaining = content_length
+                while remaining > 0:
+                    chunk = source.read(min(1024 * 1024, remaining))
+                    if not chunk:
+                        break
+                    self.wfile.write(chunk)
+                    remaining -= len(chunk)
+        except (BrokenPipeError, ConnectionResetError):
+            return
 
     def do_GET(self):
         if self.path == "/":
@@ -1277,12 +1343,7 @@ class OptimizerHandler(BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.NOT_FOUND)
             return
 
-        self.send_response(HTTPStatus.OK)
-        self.send_header("Content-Type", "video/mp4")
-        self.send_header("Content-Length", str(preview["path"].stat().st_size))
-        self.end_headers()
-        with preview["path"].open("rb") as source:
-            shutil.copyfileobj(source, self.wfile)
+        self.serve_video_file(preview["path"])
 
     def handle_output(self):
         filename = Path(unquote(self.path.removeprefix("/output/"))).name
@@ -1291,12 +1352,7 @@ class OptimizerHandler(BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.NOT_FOUND)
             return
 
-        self.send_response(HTTPStatus.OK)
-        self.send_header("Content-Type", "video/mp4")
-        self.send_header("Content-Length", str(file_path.stat().st_size))
-        self.end_headers()
-        with file_path.open("rb") as source:
-            shutil.copyfileobj(source, self.wfile)
+        self.serve_video_file(file_path)
 
     def handle_delete_output(self):
         filename = Path(unquote(self.path.removeprefix("/output/"))).name
@@ -1323,16 +1379,7 @@ class OptimizerHandler(BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.NOT_FOUND)
             return
 
-        self.send_response(HTTPStatus.OK)
-        self.send_header("Content-Type", "video/mp4")
-        self.send_header("Content-Length", str(file_path.stat().st_size))
-        self.send_header("Content-Disposition", f'attachment; filename="{html.escape(filename)}"')
-        self.end_headers()
-        if not send_body:
-            return
-
-        with file_path.open("rb") as source:
-            shutil.copyfileobj(source, self.wfile)
+        self.serve_video_file(file_path, send_body=send_body, attachment_name=filename)
 
 
 def main():
